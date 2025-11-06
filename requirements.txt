@@ -4,5 +4,4 @@ matplotlib
 pandas
 numpy
 voila==0.4.2
-voila-gridstack==0.2.0
 notebook
