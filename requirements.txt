@@ -3,5 +3,6 @@ ipywidgets
 matplotlib
 pandas
 numpy
-voila
+voila==0.4.2
+voila-material==0.1.6
 notebook
