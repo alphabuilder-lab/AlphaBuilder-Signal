@@ -1,13 +1,6 @@
 {
   "VoilaConfiguration": {
-    "enable_nbextensions": false,
-    "server_url_prefix": "",
-    "static_url_prefix": "/static",
-    "template": "material",
     "allow_remote_access": true,
-    "cookie_options": {
-      "sameSite": "None"
-    },
     "headers": {
       "X-Frame-Options": "ALLOWALL"
     }
