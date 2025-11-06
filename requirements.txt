@@ -1,3 +1,7 @@
-ipywidgets
-notebook
-voila
+yfinance==0.2.27
+ipywidgets==8.1.0
+matplotlib==3.8.0
+pandas==2.1.1
+numpy==1.26.0
+voila==0.4.2
+notebook==7.6.0
