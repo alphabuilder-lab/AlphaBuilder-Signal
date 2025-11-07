@@ -87,36 +87,48 @@ def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
 
 @app.get("/ivs")
 def generate_ivs(
-    spot: float = 100.0,
-    maturities: int = 10,
-    strikes: int = 20
+    spot: float = Query(100.0, description="Current spot price"),
+    maturities: int = Query(10, description="Number of maturity points"),
+    strikes: int = Query(20, description="Number of strike points"),
 ):
     """
-    Simulate a smooth implied volatility surface (moneyness × maturity)
+    Simulate a smooth Implied Volatility Surface (IVS)
+    as a function of moneyness and maturity.
     """
 
-    T = np.linspace(0.1, 2.0, maturities)  # 0.1Y to 2Y maturities
-    K = np.linspace(60, 140, strikes)       # strike range
-    F = spot                                # forward ≈ spot
-    M = K / F                               # moneyness
+    # Define maturities (in years) and strikes
+    T = np.linspace(0.1, 2.0, maturities)
+    K = np.linspace(60, 140, strikes)
+    F = spot
+    M = K / F  # moneyness
 
-    # Example synthetic IV model: smile + term structure
+    # Base vol (term structure)
     base_vol = 0.20 + 0.05 * np.exp(-T)[:, None]
-    smile_term = 0.1 * (M[None, :] - 1) ** 2
-    iv = base_vol + smile_term
 
-    # Convert to long-format DataFrame
-    df = pd.DataFrame(
-        [(float(t), float(k), float(m), float(v))
-         for t, row in zip(T, iv) for k, m, v in zip(K, M, row)],
-        columns=["maturity", "strike", "moneyness", "iv"]
-    )
+    # Smile effect (quadratic)
+    smile_term = 0.1 * (M[None, :] - 1.0) ** 2
+
+    # Combined surface
+    iv_surface = base_vol + smile_term
+
+    # Create long-format DataFrame
+    df = pd.DataFrame({
+        "maturity": np.repeat(T, strikes),
+        "strike": np.tile(K, maturities),
+        "moneyness": np.tile(M, maturities),
+        "iv": iv_surface.flatten(),
+    })
+
+    # Sort for consistent output
+    df = df.sort_values(["maturity", "strike"]).reset_index(drop=True)
 
     return {
         "meta": {
             "spot": spot,
             "maturities": maturities,
             "strikes": strikes,
+            "min_iv": float(df["iv"].min()),
+            "max_iv": float(df["iv"].max())
         },
         "data": df.to_dict(orient="records")
     }
