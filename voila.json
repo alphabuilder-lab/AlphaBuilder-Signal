@@ -1,8 +1,0 @@
-{
-  "VoilaConfiguration": {
-    "allow_remote_access": true,
-    "headers": {
-      "X-Frame-Options": "ALLOWALL"
-    }
-  }
-}

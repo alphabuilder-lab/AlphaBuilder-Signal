@@ -1,7 +1,3 @@
 yfinance
-ipywidgets
-matplotlib
 pandas
 numpy
-voila==0.4.2
-notebook
