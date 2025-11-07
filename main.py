@@ -30,12 +30,8 @@ def home():
 
 
 @app.get("/stock/{ticker}")
+@app.get("/stock/{ticker}")
 def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
-    """
-    Fetch historical price data for a given ticker.
-    Example: /stock/AAPL?period=1y&interval=1d
-    """
-
     try:
         df = yf.download(
             ticker,
@@ -48,36 +44,30 @@ def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
         if df.empty:
             raise HTTPException(status_code=404, detail=f"No data found for {ticker}")
 
+        # Flatten and normalize
         df = df.reset_index()
-
         if isinstance(df.columns, pd.MultiIndex):
-            df.columns = ['_'.join(col).strip() for col in df.columns.values]
+            df.columns = [col[0] for col in df.columns]
+        df = df.rename(columns={"Adj Close": "Close"})
 
-        date_col = "Date"
-        close_col = "Close"
-        if date_col not in df.columns or close_col not in df.columns:
+        # Validate
+        if "Date" not in df.columns or "Close" not in df.columns:
             raise HTTPException(status_code=500, detail=f"Missing columns in {ticker} data")
 
-        if not date_col or not close_col:
-            raise HTTPException(status_code=500, detail=f"Unexpected columns: {list(df.columns)}")
-
-        close_series = df[close_col]
+        close_series = df["Close"]
         if isinstance(close_series, pd.DataFrame):
             close_series = close_series.iloc[:, 0]
 
-        data = {
+        return {
             "ticker": ticker.upper(),
-            "dates": df[date_col].astype(str).tolist(),
+            "dates": df["Date"].astype(str).tolist(),
             "close": close_series.astype(float).tolist(),
             "meta": {
                 "period": period,
                 "interval": interval,
                 "count": len(df)
-            }
+            },
         }
-
-        print(f"Data fetched successfully for {ticker}: {len(df)} rows")
-        return data
 
     except Exception as e:
         print("ERROR:", str(e))
