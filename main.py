@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
 import traceback
+import numpy as np
 
 app = FastAPI(
     title="AlphaBuilder-Dash API",
@@ -10,9 +11,14 @@ app = FastAPI(
     version="1.0",
 )
 
+origins = [
+    "http://localhost:3000",  
+    "https://alphabuilder.xyz",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,7 +37,6 @@ def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
     """
 
     try:
-        # Download data
         df = yf.download(
             ticker,
             period=period,
@@ -48,8 +53,10 @@ def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = ['_'.join(col).strip() for col in df.columns.values]
 
-        date_col = next((c for c in df.columns if "Date" in c), None)
-        close_col = next((c for c in df.columns if "Close" in c), None)
+        date_col = "Date"
+        close_col = "Close"
+        if date_col not in df.columns or close_col not in df.columns:
+            raise HTTPException(status_code=500, detail=f"Missing columns in {ticker} data")
 
         if not date_col or not close_col:
             raise HTTPException(status_code=500, detail=f"Unexpected columns: {list(df.columns)}")
@@ -76,3 +83,40 @@ def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
         print("ERROR:", str(e))
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Internal Error: {str(e)}")
+
+
+@app.get("/ivs")
+def generate_ivs(
+    spot: float = 100.0,
+    maturities: int = 10,
+    strikes: int = 20
+):
+    """
+    Simulate a smooth implied volatility surface (moneyness × maturity)
+    """
+
+    T = np.linspace(0.1, 2.0, maturities)  # 0.1Y to 2Y maturities
+    K = np.linspace(60, 140, strikes)       # strike range
+    F = spot                                # forward ≈ spot
+    M = K / F                               # moneyness
+
+    # Example synthetic IV model: smile + term structure
+    base_vol = 0.20 + 0.05 * np.exp(-T)[:, None]
+    smile_term = 0.1 * (M[None, :] - 1) ** 2
+    iv = base_vol + smile_term
+
+    # Convert to long-format DataFrame
+    df = pd.DataFrame(
+        [(float(t), float(k), float(m), float(v))
+         for t, row in zip(T, iv) for k, m, v in zip(K, M, row)],
+        columns=["maturity", "strike", "moneyness", "iv"]
+    )
+
+    return {
+        "meta": {
+            "spot": spot,
+            "maturities": maturities,
+            "strikes": strikes,
+        },
+        "data": df.to_dict(orient="records")
+    }
