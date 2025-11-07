@@ -30,7 +30,6 @@ def home():
 
 
 @app.get("/stock/{ticker}")
-@app.get("/stock/{ticker}")
 def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
     try:
         df = yf.download(
