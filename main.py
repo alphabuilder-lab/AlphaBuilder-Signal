@@ -24,7 +24,7 @@ def home():
 
 
 @app.get("/stock/{ticker}")
-def get_stock_data(ticker: str, period: str = "6mo", interval: str = "1d"):
+def get_stock_data(ticker: str, period: str = "20y", interval: str = "1d"):
     """
     Fetch historical price data for a given ticker.
     Example: /stock/AAPL?period=1y&interval=1d
